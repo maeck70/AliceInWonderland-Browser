@@ -99,7 +99,7 @@ func parseBook(filePath string) ([]Paragraph, error) {
 func main() {
 	characters.InitRules()
 
-	filePath := "AliceInWOnderland.txt"
+	filePath := "AliceInWonderland.txt"
 	fmt.Printf("Parsing book: %s...\n", filePath)
 	paragraphs, err := parseBook(filePath)
 	if err != nil {

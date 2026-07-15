@@ -5,7 +5,7 @@ A Go-based application that parses Lewis Carroll's *Alice's Adventures in Wonder
 ## Project Structure
 
 - `characters/`: Shared package containing character rules and entity extraction definitions.
-- `cmd/loader/`: The data ingestion program that reads `AliceInWOnderland.txt`, populates Neo4j with Paragraph and Individual nodes, links appearances, and verifies counts.
+- `cmd/loader/`: The data ingestion program that reads `AliceInWonderland.txt`, populates Neo4j with Paragraph and Individual nodes, links appearances, and verifies counts.
 - `cmd/server/`: The web application that exposes REST APIs and hosts an embedded HTML/CSS/JS frontend browser interface.
 - `static/`: Static resources (web templates).
 
