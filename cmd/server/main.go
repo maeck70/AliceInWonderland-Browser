@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
@@ -24,7 +25,20 @@ func getEnv(key, defaultVal string) string {
 }
 
 func main() {
-	portFlag := flag.String("port", "8080", "Port to serve the web application on")
+	// Load environment variables from .env
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: No .env file found or error loading it, using system environment variables.")
+	}
+
+	dbURIDefault := getEnv("NEO4J_URI", "bolt://localhost:7687")
+	dbUserDefault := getEnv("NEO4J_USER", "neo4j")
+	dbPasswordDefault := getEnv("NEO4J_PASSWORD", "neo4jguest")
+	portDefault := getEnv("HTTP_PORT", "8080")
+
+	portFlag := flag.String("port", portDefault, "Port to serve the web application on")
+	dbURIFlag := flag.String("uri", dbURIDefault, "Neo4j Database Bolt URI")
+	dbUserFlag := flag.String("user", dbUserDefault, "Neo4j Database Username")
+	dbPasswordFlag := flag.String("password", dbPasswordDefault, "Neo4j Database Password")
 	flag.Parse()
 
 	indexHTML, err := staticFiles.ReadFile("static/index.html")
@@ -32,14 +46,10 @@ func main() {
 		log.Fatalf("Failed to read embedded static/index.html: %v", err)
 	}
 
-	dbURI := getEnv("NEO4J_URI", "bolt://localhost:7687")
-	dbUser := getEnv("NEO4J_USER", "neo4j")
-	dbPassword := getEnv("NEO4J_PASSWORD", "neo4jguest")
-
 	ctx := context.Background()
 
-	fmt.Printf("Connecting to Neo4j at %s...\n", dbURI)
-	driver, err := neo4j.NewDriverWithContext(dbURI, neo4j.BasicAuth(dbUser, dbPassword, ""))
+	fmt.Printf("Connecting to Neo4j at %s...\n", *dbURIFlag)
+	driver, err := neo4j.NewDriverWithContext(*dbURIFlag, neo4j.BasicAuth(*dbUserFlag, *dbPasswordFlag, ""))
 	if err != nil {
 		log.Fatalf("Failed to create Neo4j driver: %v", err)
 	}
