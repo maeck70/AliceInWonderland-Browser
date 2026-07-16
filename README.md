@@ -1,25 +1,49 @@
-# Alice in Wonderland Graph Browser
+# Alice in Wonderland Graph Browser (GoTH Stack)
 
-A Go-based application that parses Lewis Carroll's *Alice's Adventures in Wonderland*, extracts characters (individuals) and settings (locations) appearing in each paragraph, constructs a graph in Neo4j, and serves a high-fidelity web application to browse appearances, cross-link visits, and highlight text occurrences.
+A Go-based web application that parses Lewis Carroll's *Alice's Adventures in Wonderland*, extracts characters (individuals) and settings (locations) appearing in each paragraph, constructs an interactive graph in Neo4j, and serves a high-fidelity web application to browse appearances, cross-link visits, and highlight text occurrences.
+
+This application is built using the **GoTH stack (Go, Templ, and HTMX)**, delivering a reactive Single Page Application (SPA) experience with server-side rendered HTML fragments and zero frontend JavaScript frameworks.
+
+---
+
+## The GoTH Stack Architecture
+
+- **Go (Backend)**: Connects to Neo4j, queries nodes and relationships using Cypher, parses input files, and runs the web server.
+- **Templ (Go Templates)**: A type-safe HTML templating engine for Go. Templates are written in `.templ` files and compiled into raw Go code, providing compile-time type safety for HTML structures, loop rendering, and argument bindings.
+- **HTMX (Dynamic DOM Swapping)**: A lightweight JavaScript library loaded in the header that intercepts anchor clicks, form submissions, and input events, making AJAX requests directly from HTML attributes (e.g. `hx-get`, `hx-target`) and replacing specific DOM elements without page reloads.
+
+---
 
 ## Project Structure
 
 - `characters/`: Shared package containing character and location rules, entity extraction matchers, and regex rules.
-- `cmd/loader/`: The data ingestion program that reads `AliceInWonderland.txt`, populates Neo4j with Paragraph, Individual, and Location nodes, constructs relationships, and verifies counts.
-- `cmd/server/`: The web application that exposes REST APIs and hosts an embedded HTML/CSS/JS frontend browser interface.
-- `cmd/server/static/`: Embedded frontend templates (HTML/CSS/JS).
+- `cmd/loader/`: Data ingestion program that parses `AliceInWonderland.txt` and loads paragraphs, characters, locations, and relationships into Neo4j.
+- `cmd/server/`: Main HTTP server that handles HTMX endpoints and serves template components.
+- `cmd/server/templates/`: 
+  - `components.templ`: The UI component source definitions (HTML layout, sidebar, list, detail views, and highlights).
+  - `components_templ.go`: Compiled template files generated automatically by the `templ` compiler.
 
-## Database Configuration
+---
 
-By default, the application connects to a local Neo4j database on Podman/Docker:
-- **Bolt Port**: `7687` (HTTP browser on `7474`)
-- **Username**: `neo4j`
-- **Password**: `neo4jguest`
+## Configuration
 
-You can override these by setting the following environment variables:
-- `NEO4J_URI`
-- `NEO4J_USER`
-- `NEO4J_PASSWORD`
+Configuration values are managed by **`godotenv`** and the Go standard **`flag`** module. On startup, the application attempts to read defaults from a tracked `.env` file at the root:
+
+```env
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=neo4jguest
+HTTP_PORT=8080
+```
+
+### CLI Overrides
+Any of the settings inside `.env` can be overridden on execution using command-line flags:
+*   `-port`: Port to serve the web application (e.g., `-port 8085`)
+*   `-uri`: Neo4j bolt connection URI
+*   `-user`: Neo4j database username
+*   `-password`: Neo4j database password
+
+---
 
 ## How to Run
 
@@ -29,12 +53,27 @@ Run the loader to parse the text and load it into Neo4j:
 go run cmd/loader/main.go
 ```
 
-### 2. Run the Web Server
-Launch the server to serve the frontend browser interface:
+### 2. Compile Templates (Go Templ)
+Install the `templ` compiler command and generate the compiled Go template files (`*_templ.go`):
 ```bash
-go run cmd/server/main.go -port 8080
+# 1. Install the templ compiler (one-time global installation)
+go install github.com/a-h/templ/cmd/templ@latest
+
+# 2. Compile templates inside your project workspace
+templ generate
 ```
-Open [http://localhost:8080](http://localhost:8080) in your web browser.
+
+> [!TIP]
+> **Developer Watch Mode**: During development, you can run `templ generate --watch` in a separate terminal. It will watch for edits inside `.templ` files and automatically recompile them in real-time.
+
+### 3. Run the Web Server
+Launch the server to serve the HTMX frontend browser interface:
+```bash
+go run cmd/server/main.go
+```
+Open [http://localhost:8080](http://localhost:8080) (or whichever port you specified in `.env` / CLI flags) in your web browser.
+
+---
 
 ## Graph Schema
 
@@ -48,6 +87,8 @@ Open [http://localhost:8080](http://localhost:8080) in your web browser.
 - `(:Paragraph)-[:LOCATED_IN]->(:Location)`: Paragraph takes place at the location.
 - `(:Individual)-[:VISITED]->(:Location)`: Character visited the location (derived via paragraph occurrences).
 - `(:Individual)-[:MET_AT]->(:Individual)`: Character met another character in the same setting/location (derived via paragraph occurrences).
+
+---
 
 ## Useful Cypher Queries
 
@@ -93,6 +134,8 @@ Use the [Neo4j Browser](http://localhost:7474) (credentials `neo4j` / `neo4jgues
            count(distinct p) as CoOccurrencesCount
     ORDER BY CoOccurrencesCount DESC
     ```
+
+---
 
 ## License
 MIT License - see [LICENSE](LICENSE) for details.
