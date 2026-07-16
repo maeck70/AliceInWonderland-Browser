@@ -29,8 +29,18 @@ Run the loader to parse the text and load it into Neo4j:
 go run cmd/loader/main.go
 ```
 
-### 2. Run the Web Server
-Launch the server to serve the frontend browser interface:
+### 2. Compile Templates (Go Templ)
+Install the `templ` compiler command and generate Go templates before building/running the web server:
+```bash
+# Install templ tool
+go install github.com/a-h/templ/cmd/templ@latest
+
+# Generate Go code from components.templ
+templ generate
+```
+
+### 3. Run the Web Server
+Launch the server to serve the HTMX frontend browser interface:
 ```bash
 go run cmd/server/main.go -port 8080
 ```

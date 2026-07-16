@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"alice-neo4j/characters"
+	"github.com/joho/godotenv"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
@@ -99,6 +101,20 @@ func parseBook(filePath string) ([]Paragraph, error) {
 }
 
 func main() {
+	// Load environment variables from .env
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: No .env file found or error loading it, using system environment variables.")
+	}
+
+	dbURIDefault := getEnv("NEO4J_URI", "bolt://localhost:7687")
+	dbUserDefault := getEnv("NEO4J_USER", "neo4j")
+	dbPasswordDefault := getEnv("NEO4J_PASSWORD", "neo4jguest")
+
+	dbURIFlag := flag.String("uri", dbURIDefault, "Neo4j Database Bolt URI")
+	dbUserFlag := flag.String("user", dbUserDefault, "Neo4j Database Username")
+	dbPasswordFlag := flag.String("password", dbPasswordDefault, "Neo4j Database Password")
+	flag.Parse()
+
 	characters.InitRules()
 	characters.InitLocationRules()
 
@@ -110,15 +126,11 @@ func main() {
 	}
 	fmt.Printf("Successfully parsed %d paragraphs from the book.\n", len(paragraphs))
 
-	dbURI := getEnv("NEO4J_URI", "bolt://localhost:7687")
-	dbUser := getEnv("NEO4J_USER", "neo4j")
-	dbPassword := getEnv("NEO4J_PASSWORD", "neo4jguest")
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	fmt.Printf("Connecting to Neo4j at %s...\n", dbURI)
-	driver, err := neo4j.NewDriverWithContext(dbURI, neo4j.BasicAuth(dbUser, dbPassword, ""))
+	fmt.Printf("Connecting to Neo4j at %s...\n", *dbURIFlag)
+	driver, err := neo4j.NewDriverWithContext(*dbURIFlag, neo4j.BasicAuth(*dbUserFlag, *dbPasswordFlag, ""))
 	if err != nil {
 		log.Fatalf("Failed to create Neo4j driver: %v", err)
 	}
