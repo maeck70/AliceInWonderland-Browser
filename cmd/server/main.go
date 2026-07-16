@@ -298,6 +298,106 @@ func main() {
 		json.NewEncoder(w).Encode(result)
 	})
 
+	http.HandleFunc("/api/character-interactions", func(w http.ResponseWriter, r *http.Request) {
+		charName := r.URL.Query().Get("character")
+		if charName == "" {
+			http.Error(w, "missing 'character' query parameter", http.StatusBadRequest)
+			return
+		}
+
+		session := driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+		defer session.Close(ctx)
+
+		result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+			res, err := tx.Run(ctx, `
+				MATCH (c:Individual {name: $name})-[:MET_AT]->(other:Individual)
+				RETURN other.name as name
+				ORDER BY name ASC
+			`, map[string]interface{}{"name": charName})
+			if err != nil {
+				return nil, err
+			}
+
+			var list []string
+			for res.Next(ctx) {
+				rec := res.Record()
+				nameVal, _ := rec.Get("name")
+				name, _ := nameVal.(string)
+				list = append(list, name)
+			}
+			return list, nil
+		})
+
+		if err != nil {
+			http.Error(w, fmt.Sprintf("database error: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	})
+
+	http.HandleFunc("/api/shared-paragraphs", func(w http.ResponseWriter, r *http.Request) {
+		char1 := r.URL.Query().Get("char1")
+		char2 := r.URL.Query().Get("char2")
+
+		if char1 == "" || char2 == "" {
+			http.Error(w, "missing 'char1' or 'char2' query parameters", http.StatusBadRequest)
+			return
+		}
+
+		session := driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+		defer session.Close(ctx)
+
+		result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+			res, err := tx.Run(ctx, `
+				MATCH (cA:Individual {name: $char1})-[:APPEARED_IN]->(p:Paragraph)<-[:APPEARED_IN]-(cB:Individual {name: $char2})
+				MATCH (p)-[:LOCATED_IN]->(l:Location)
+				RETURN p.number as number, p.text as text, l.name as location
+				ORDER BY p.number ASC
+			`, map[string]interface{}{
+				"char1": char1,
+				"char2": char2,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			type ParagraphResult struct {
+				Number   int64  `json:"number"`
+				Text     string `json:"text"`
+				Location string `json:"location"`
+			}
+			var list []ParagraphResult
+
+			for res.Next(ctx) {
+				rec := res.Record()
+				numVal, _ := rec.Get("number")
+				textVal, _ := rec.Get("text")
+				locVal, _ := rec.Get("location")
+
+				num, _ := numVal.(int64)
+				text, _ := textVal.(string)
+				location, _ := locVal.(string)
+
+				list = append(list, ParagraphResult{
+					Number:   num,
+					Text:     text,
+					Location: location,
+				})
+			}
+			return list, nil
+		})
+
+		if err != nil {
+			http.Error(w, fmt.Sprintf("database error: %v", err), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	})
+
 	fmt.Printf("Web server starting on http://localhost:%s...\n", *portFlag)
 	log.Fatal(http.ListenAndServe(":"+*portFlag, nil))
 }

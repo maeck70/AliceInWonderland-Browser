@@ -188,6 +188,7 @@ func main() {
 		relationshipCount := 0
 		locatedRelCount := 0
 		visitedRelCount := 0
+		metRelCount := 0
 		for _, p := range paragraphs {
 			_, err = tx.Run(ctx, "CREATE (p:Paragraph {number: $number, text: $text})", map[string]interface{}{
 				"number": p.Number,
@@ -240,11 +241,34 @@ func main() {
 					visitedRelCount++
 				}
 			}
+
+			// Create MET_AT relationships between co-occurring characters in paragraphs that have locations
+			if len(p.Locations) > 0 && len(p.Characters) > 1 {
+				for i := 0; i < len(p.Characters); i++ {
+					for j := i + 1; j < len(p.Characters); j++ {
+						charA := p.Characters[i]
+						charB := p.Characters[j]
+						_, err = tx.Run(ctx, `
+							MATCH (cA:Individual {name: $charA}), (cB:Individual {name: $charB})
+							MERGE (cA)-[:MET_AT]->(cB)
+							MERGE (cB)-[:MET_AT]->(cA)
+						`, map[string]interface{}{
+							"charA": charA,
+							"charB": charB,
+						})
+						if err != nil {
+							return nil, fmt.Errorf("failed to link character %q and %q with MET_AT: %w", charA, charB, err)
+						}
+						metRelCount += 2
+					}
+				}
+			}
 		}
 
 		fmt.Printf("Transaction prepared: loaded %d individuals, %d locations, %d paragraphs, and:\n", len(characters.Characters), len(characters.Locations), len(paragraphs))
 		fmt.Printf("  - %d APPEARED_IN relationships\n", relationshipCount)
 		fmt.Printf("  - %d LOCATED_IN relationships\n", locatedRelCount)
+		fmt.Printf("  - %d MET_AT relationships\n", metRelCount)
 		return nil, nil
 	})
 
@@ -263,7 +287,8 @@ func main() {
 			MATCH (p:Paragraph) WITH charCount, locCount, count(p) as paraCount
 			MATCH ()-[r1:APPEARED_IN]->() WITH charCount, locCount, paraCount, count(r1) as appCount
 			MATCH ()-[r2:LOCATED_IN]->() WITH charCount, locCount, paraCount, appCount, count(r2) as locRelCount
-			MATCH ()-[r3:VISITED]->() RETURN charCount, locCount, paraCount, appCount, locRelCount, count(r3) as visitedCount
+			MATCH ()-[r3:VISITED]->() WITH charCount, locCount, paraCount, appCount, locRelCount, count(r3) as visitedCount
+			MATCH ()-[r4:MET_AT]->() RETURN charCount, locCount, paraCount, appCount, locRelCount, visitedCount, count(r4) as metCount
 		`, nil)
 		if err != nil {
 			return nil, err
@@ -276,10 +301,12 @@ func main() {
 			appCount, _ := record.Get("appCount")
 			locRelCount, _ := record.Get("locRelCount")
 			visitedCount, _ := record.Get("visitedCount")
+			metCount, _ := record.Get("metCount")
 			fmt.Printf("Verification: found %v Individuals, %v Locations, %v Paragraphs, and:\n", charCount, locCount, paraCount)
 			fmt.Printf("  - %v APPEARED_IN relationships\n", appCount)
 			fmt.Printf("  - %v LOCATED_IN relationships\n", locRelCount)
 			fmt.Printf("  - %v VISITED relationships\n", visitedCount)
+			fmt.Printf("  - %v MET_AT relationships\n", metCount)
 		}
 		return nil, nil
 	})

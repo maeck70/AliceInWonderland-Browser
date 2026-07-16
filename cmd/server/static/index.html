@@ -421,6 +421,16 @@
             text-shadow: 0 0 10px rgba(247, 37, 133, 0.4);
         }
 
+        .highlight-secondary {
+            background: rgba(255, 112, 166, 0.25);
+            border-bottom: 2px solid rgba(255, 112, 166, 0.7);
+            padding: 0 4px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 112, 166, 0.4);
+        }
+
         .highlight-location {
             background: rgba(46, 196, 182, 0.2);
             border-bottom: 2px solid rgba(46, 196, 182, 0.6);
@@ -477,13 +487,18 @@
                 <div class="content-header" id="header-panel">
                     <div class="header-top">
                         <h2 id="selected-title">Item Name</h2>
-                        <div class="stats-badge" id="stats-badge-container">Appears in <span id="selected-count">0</span> paragraphs</div>
-                    </div>
-                    <div class="connections-panel">
-                        <span class="connections-label" id="connections-label-text">Connected Entities</span>
-                        <div class="pills-container" id="pills-list">
-                            <!-- Dynamic Cross-Link Pills -->
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button id="reset-shared-btn" class="pill" style="display: none; border-color: var(--highlight-border); color: #fff; background: rgba(247,37,133,0.15); margin: 0; padding: 6px 12px;">Show All Appearances</button>
+                            <div class="stats-badge" id="stats-badge-container">Appears in <span id="selected-count">0</span> paragraphs</div>
                         </div>
+                    </div>
+                    <div class="connections-panel" id="locations-panel" style="display: none; margin-top: 8px;">
+                        <span class="connections-label">Locations Visited</span>
+                        <div class="pills-container" id="locations-pills-list"></div>
+                    </div>
+                    <div class="connections-panel" id="characters-panel" style="display: none; margin-top: 8px;">
+                        <span class="connections-label" id="characters-panel-label">Shared Locations With</span>
+                        <div class="pills-container" id="characters-pills-list"></div>
                     </div>
                 </div>
                 <div class="paragraphs-container" id="paragraphs-list">
@@ -622,9 +637,22 @@
             renderList(filtered);
         });
 
+        let isSharedMode = false;
+        let mainCharacter = "";
+        let secondCharacter = "";
+
+        // Reset button listener
+        document.getElementById('reset-shared-btn').addEventListener('click', () => {
+            if (selectedItem) {
+                selectItem(selectedItem, 'characters');
+            }
+        });
+
         // Select Character or Location
         async function selectItem(item, type) {
             selectedItem = item;
+            isSharedMode = false;
+            document.getElementById('reset-shared-btn').style.display = 'none';
             
             // Highlight active sidebar item
             const elements = document.querySelectorAll('.list-item');
@@ -633,7 +661,6 @@
                 if (name === item.name) {
                     el.classList.add('active');
                 } else {
-                    el.classList.remove('remove'); // remove all active states
                     el.classList.remove('active');
                 }
             });
@@ -660,55 +687,105 @@
             const queryParam = type === 'characters' ? 'character' : 'location';
             
             try {
-                // Parallel fetch: paragraphs + related cross-linked entities
-                const pReq = fetch(`/api/paragraphs?${queryParam}=${encodeURIComponent(item.name)}`);
-                const relQueryParam = type === 'characters' ? 'character-locations?character' : 'location-characters?location';
-                const relReq = fetch(`/api/${relQueryParam}=${encodeURIComponent(item.name)}`);
-                
-                const [pRes, relRes] = await Promise.all([pReq, relReq]);
-                const paragraphs = await pRes.json();
-                const relatedEntities = await relRes.json();
+                if (type === 'characters') {
+                    document.getElementById('locations-panel').style.display = 'block';
+                    document.getElementById('characters-panel').style.display = 'block';
+                    document.getElementById('characters-panel-label').innerText = 'Shared Locations With';
 
-                renderPills(relatedEntities, type);
-                renderParagraphs(paragraphs, item.name, type);
+                    // Parallel fetch: paragraphs + visited locations + met characters
+                    const pReq = fetch(`/api/paragraphs?character=${encodeURIComponent(item.name)}`);
+                    const locReq = fetch(`/api/character-locations?character=${encodeURIComponent(item.name)}`);
+                    const charReq = fetch(`/api/character-interactions?character=${encodeURIComponent(item.name)}`);
+
+                    const [pRes, locRes, charRes] = await Promise.all([pReq, locReq, charReq]);
+                    const paragraphs = await pRes.json();
+                    const locations = await locRes.json();
+                    const metCharacters = await charRes.json();
+
+                    renderLocationsPills(locations);
+                    renderCharactersPills(metCharacters, true);
+                    renderParagraphs(paragraphs, item.name, 'characters');
+                } else {
+                    document.getElementById('locations-panel').style.display = 'none';
+                    document.getElementById('characters-panel').style.display = 'block';
+                    document.getElementById('characters-panel-label').innerText = 'Visiting Characters';
+
+                    // Parallel fetch: paragraphs + visiting characters
+                    const pReq = fetch(`/api/paragraphs?location=${encodeURIComponent(item.name)}`);
+                    const charReq = fetch(`/api/location-characters?location=${encodeURIComponent(item.name)}`);
+
+                    const [pRes, charRes] = await Promise.all([pReq, charReq]);
+                    const paragraphs = await pRes.json();
+                    const visitingCharacters = await charRes.json();
+
+                    renderCharactersPills(visitingCharacters, false);
+                    renderParagraphs(paragraphs, item.name, 'locations');
+                }
             } catch (err) {
                 paragraphsList.innerHTML = '<div style="color: #ff70a6;">Error loading data.</div>';
                 console.error(err);
             }
         }
 
-        // Render Cross-Link Pills
-        function renderPills(entities, type) {
-            const label = document.getElementById('connections-label-text');
-            const container = document.getElementById('pills-list');
+        // Render Location Pills
+        function renderLocationsPills(locations) {
+            const container = document.getElementById('locations-pills-list');
             container.innerHTML = '';
+            if (locations.length === 0) {
+                container.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary);">No locations mapped.</span>';
+                return;
+            }
+            locations.forEach(locName => {
+                const pill = document.createElement('div');
+                pill.className = 'pill pill-location';
+                pill.innerText = locName;
+                pill.addEventListener('click', () => jumpTo('locations', locName));
+                container.appendChild(pill);
+            });
+        }
 
-            if (type === 'characters') {
-                label.innerText = 'Locations Visited';
-                if (entities.length === 0) {
-                    container.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-secondary);">No locations mapped.</span>';
-                    return;
-                }
-                entities.forEach(locName => {
-                    const pill = document.createElement('div');
-                    pill.className = 'pill pill-location';
-                    pill.innerText = locName;
-                    pill.addEventListener('click', () => jumpTo('locations', locName));
-                    container.appendChild(pill);
-                });
-            } else {
-                label.innerText = 'Visiting Characters';
-                if (entities.length === 0) {
-                    container.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-secondary);">No characters mapped.</span>';
-                    return;
-                }
-                entities.forEach(charName => {
-                    const pill = document.createElement('div');
-                    pill.className = 'pill';
-                    pill.innerText = charName;
+        // Render Character Pills (Shared Locations or Visiting)
+        function renderCharactersPills(chars, isInteractions) {
+            const container = document.getElementById('characters-pills-list');
+            container.innerHTML = '';
+            if (chars.length === 0) {
+                container.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary);">No characters mapped.</span>';
+                return;
+            }
+            chars.forEach(charName => {
+                const pill = document.createElement('div');
+                pill.className = 'pill';
+                pill.innerText = charName;
+                if (isInteractions) {
+                    pill.addEventListener('click', () => enterSharedMode(selectedItem.name, charName));
+                } else {
                     pill.addEventListener('click', () => jumpTo('characters', charName));
-                    container.appendChild(pill);
-                });
+                }
+                container.appendChild(pill);
+            });
+        }
+
+        // Enter Shared Character Mode
+        async function enterSharedMode(char1, char2) {
+            isSharedMode = true;
+            mainCharacter = char1;
+            secondCharacter = char2;
+
+            document.getElementById('reset-shared-btn').style.display = 'block';
+            document.getElementById('selected-title').innerText = `${char1} & ${char2}`;
+
+            const paragraphsList = document.getElementById('paragraphs-list');
+            paragraphsList.innerHTML = '<div style="color: var(--text-secondary);">Loading shared paragraphs...</div>';
+
+            try {
+                const res = await fetch(`/api/shared-paragraphs?char1=${encodeURIComponent(char1)}&char2=${encodeURIComponent(char2)}`);
+                const paragraphs = await res.json();
+                
+                document.getElementById('selected-count').innerText = paragraphs.length;
+                renderParagraphs(paragraphs, char1, 'characters');
+            } catch (err) {
+                paragraphsList.innerHTML = '<div style="color: #ff70a6;">Error loading shared paragraphs.</div>';
+                console.error(err);
             }
         }
 
@@ -738,17 +815,44 @@
                 card.style.animationDelay = `${index * 0.05}s`;
 
                 let highlightedText = p.text;
+                let metaText = `Paragraph #${p.number}`;
 
                 if (type === 'characters') {
-                    // Highlight the selected character's aliases
-                    const aliases = characterRules[activeName] || [activeName];
-                    const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
-                    sortedAliases.forEach(alias => {
-                        const isSister = alias.toLowerCase() === 'sister';
-                        const flags = isSister ? 'gi' : 'g';
-                        const regex = new RegExp(`\\b(${escapeRegex(alias)})\\b`, flags);
-                        highlightedText = highlightedText.replace(regex, '<span class="highlight">$1</span>');
-                    });
+                    if (isSharedMode) {
+                        if (p.location) {
+                            metaText += ` (at ${p.location})`;
+                        }
+                        
+                        // Highlight main character (violet)
+                        const mainAliases = characterRules[mainCharacter] || [mainCharacter];
+                        const sortedMain = [...mainAliases].sort((a, b) => b.length - a.length);
+                        sortedMain.forEach(alias => {
+                            const isSister = alias.toLowerCase() === 'sister';
+                            const flags = isSister ? 'gi' : 'g';
+                            const regex = new RegExp(`\\b(${escapeRegex(alias)})\\b`, flags);
+                            highlightedText = highlightedText.replace(regex, '<span class="highlight">$1</span>');
+                        });
+
+                        // Highlight second character (pink/orange: highlight-secondary)
+                        const secondAliases = characterRules[secondCharacter] || [secondCharacter];
+                        const sortedSecond = [...secondAliases].sort((a, b) => b.length - a.length);
+                        sortedSecond.forEach(alias => {
+                            const isSister = alias.toLowerCase() === 'sister';
+                            const flags = isSister ? 'gi' : 'g';
+                            const regex = new RegExp(`\\b(${escapeRegex(alias)})\\b`, flags);
+                            highlightedText = highlightedText.replace(regex, '<span class="highlight-secondary">$1</span>');
+                        });
+                    } else {
+                        // Highlight the selected character's aliases
+                        const aliases = characterRules[activeName] || [activeName];
+                        const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
+                        sortedAliases.forEach(alias => {
+                            const isSister = alias.toLowerCase() === 'sister';
+                            const flags = isSister ? 'gi' : 'g';
+                            const regex = new RegExp(`\\b(${escapeRegex(alias)})\\b`, flags);
+                            highlightedText = highlightedText.replace(regex, '<span class="highlight">$1</span>');
+                        });
+                    }
                 } else {
                     // Highlight the selected location's aliases
                     const aliases = locationRules[activeName] || [activeName];
@@ -760,7 +864,7 @@
                 }
 
                 card.innerHTML = `
-                    <div class="paragraph-meta">Paragraph #${p.number}</div>
+                    <div class="paragraph-meta">${metaText}</div>
                     <div>${highlightedText}</div>
                 `;
                 
