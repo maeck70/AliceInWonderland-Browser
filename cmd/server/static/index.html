@@ -17,6 +17,8 @@
             --accent: #9d4edd;
             --accent-glow: rgba(157, 78, 221, 0.4);
             --accent-hover: #b5179e;
+            --location-accent: #2ec4b6;
+            --location-glow: rgba(46, 196, 182, 0.4);
             --highlight-bg: rgba(247, 37, 133, 0.2);
             --highlight-border: rgba(247, 37, 133, 0.6);
             --font-display: 'Outfit', sans-serif;
@@ -79,6 +81,52 @@
             background: rgba(13, 10, 27, 0.2);
         }
 
+        .tabs-container {
+            display: flex;
+            border-bottom: 1px solid var(--panel-border);
+            padding: 10px 20px 0 20px;
+            gap: 12px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-display);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            position: relative;
+            transition: color 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            color: #fff;
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--accent);
+            border-radius: 4px 4px 0 0;
+            box-shadow: 0 -2px 10px var(--accent-glow);
+        }
+
+        .tab-btn.tab-locations.active::after {
+            background: var(--location-accent);
+            box-shadow: 0 -2px 10px var(--location-glow);
+        }
+
         .search-container {
             padding: 20px;
         }
@@ -102,7 +150,12 @@
             background: rgba(255, 255, 255, 0.08);
         }
 
-        .character-list {
+        .tab-locations-active .search-input:focus {
+            border-color: var(--location-accent);
+            box-shadow: 0 0 10px var(--location-glow);
+        }
+
+        .list-wrapper {
             flex: 1;
             overflow-y: auto;
             padding: 0 12px 20px 20px;
@@ -123,7 +176,7 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
-        .character-item {
+        .list-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -136,36 +189,47 @@
             border: 1px solid transparent;
         }
 
-        .character-item:hover {
+        .list-item:hover {
             background: rgba(255, 255, 255, 0.06);
             transform: translateX(4px);
             border-color: rgba(255, 255, 255, 0.05);
         }
 
-        .character-item.active {
+        .list-item.active {
             background: linear-gradient(135deg, rgba(157, 78, 221, 0.15) 0%, rgba(181, 23, 158, 0.05) 100%);
             border-color: rgba(157, 78, 221, 0.3);
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
         }
 
-        .character-item.active .char-name {
+        .tab-locations-active .list-item.active {
+            background: linear-gradient(135deg, rgba(46, 196, 182, 0.15) 0%, rgba(46, 196, 182, 0.03) 100%);
+            border-color: rgba(46, 196, 182, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .list-item.active .item-name {
             color: #fff;
             font-weight: 600;
         }
 
-        .character-item.active .appearance-badge {
+        .list-item.active .badge {
             background: var(--accent);
             color: #fff;
             box-shadow: 0 0 10px var(--accent-glow);
         }
 
-        .char-name {
+        .tab-locations-active .list-item.active .badge {
+            background: var(--location-accent);
+            box-shadow: 0 0 10px var(--location-glow);
+        }
+
+        .item-name {
             font-size: 1rem;
             color: var(--text-primary);
             transition: color 0.2s;
         }
 
-        .appearance-badge {
+        .badge {
             font-size: 0.8rem;
             padding: 4px 10px;
             border-radius: 20px;
@@ -185,8 +249,14 @@
         }
 
         .content-header {
-            padding: 30px 40px;
+            padding: 30px 40px 20px 40px;
             border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -211,6 +281,58 @@
         .stats-badge span {
             color: var(--accent);
             font-weight: 700;
+        }
+
+        .header-location-active .stats-badge span {
+            color: var(--location-accent);
+        }
+
+        /* Relationship connections layout */
+        .connections-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .connections-label {
+            font-family: var(--font-display);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+        }
+
+        .pills-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .pill {
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--panel-border);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-display);
+            font-weight: 500;
+        }
+
+        .pill:hover {
+            border-color: var(--accent);
+            background: rgba(157, 78, 221, 0.1);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(157, 78, 221, 0.2);
+        }
+
+        .pill.pill-location:hover {
+            border-color: var(--location-accent);
+            background: rgba(46, 196, 182, 0.1);
+            box-shadow: 0 0 10px rgba(46, 196, 182, 0.2);
         }
 
         .paragraphs-container {
@@ -277,6 +399,10 @@
             gap: 8px;
         }
 
+        .header-location-active + .paragraphs-container .paragraph-meta {
+            color: var(--location-accent);
+        }
+
         .paragraph-meta::after {
             content: '';
             flex: 1;
@@ -292,6 +418,16 @@
             font-weight: 500;
             color: #fff;
             text-shadow: 0 0 10px rgba(247, 37, 133, 0.4);
+        }
+
+        .highlight-location {
+            background: rgba(46, 196, 182, 0.2);
+            border-bottom: 2px solid rgba(46, 196, 182, 0.6);
+            padding: 0 4px;
+            border-radius: 4px;
+            font-weight: 500;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(46, 196, 182, 0.4);
         }
 
         @keyframes fadeIn {
@@ -310,14 +446,18 @@
         </div>
     </header>
 
-    <div class="container">
+    <div class="container" id="app-container">
         <!-- Sidebar -->
         <div class="sidebar">
+            <div class="tabs-container">
+                <button class="tab-btn active tab-characters" id="tab-chars-btn">Characters</button>
+                <button class="tab-btn tab-locations" id="tab-locs-btn">Settings</button>
+            </div>
             <div class="search-container">
                 <input type="text" class="search-input" id="search" placeholder="Search characters...">
             </div>
-            <div class="character-list" id="char-list">
-                <!-- Dynamic Character List -->
+            <div class="list-wrapper" id="list-container">
+                <!-- Dynamic List Items -->
             </div>
         </div>
 
@@ -327,15 +467,23 @@
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.97 5.97 0 00-.75-2.906m-.173-4.059a3.5 3.5 0 11-4.835-4.836A3.5 3.5 0 008 7.5a3.5 3.5 0 10-4.836 4.835m1.838 5.76c-.575-.561-1.111-1.21-1.598-1.94M3 13a9 9 0 018.666-8.986m.037.666A11.944 11.944 0 0112 3c2.17 0 4.207.576 5.963 1.584A6.06 6.06 0 0118 6M4 18h12M4 14h12" />
                 </svg>
-                <h2>Choose a Character</h2>
-                <p>Select an individual from the left panel to browse all the paragraphs in the book where they make an appearance.</p>
+                <h2>Choose a Character or Setting</h2>
+                <p>Select an item from the left panel to browse all the paragraphs in the book where they make an appearance.</p>
             </div>
 
-            <!-- Active Selection View (Hidden initially) -->
+            <!-- Active Selection View -->
             <div id="active-view" style="display: none; flex-direction: column; flex: 1; overflow: hidden;">
-                <div class="content-header">
-                    <h2 id="selected-char-name">Character Name</h2>
-                    <div class="stats-badge">Appears in <span id="selected-char-count">0</span> paragraphs</div>
+                <div class="content-header" id="header-panel">
+                    <div class="header-top">
+                        <h2 id="selected-title">Item Name</h2>
+                        <div class="stats-badge" id="stats-badge-container">Appears in <span id="selected-count">0</span> paragraphs</div>
+                    </div>
+                    <div class="connections-panel">
+                        <span class="connections-label" id="connections-label-text">Connected Entities</span>
+                        <div class="pills-container" id="pills-list">
+                            <!-- Dynamic Cross-Link Pills -->
+                        </div>
+                    </div>
                 </div>
                 <div class="paragraphs-container" id="paragraphs-list">
                     <!-- Dynamic Paragraph Cards -->
@@ -345,11 +493,12 @@
     </div>
 
     <script>
+        let currentTab = 'characters'; // 'characters' or 'locations'
         let allCharacters = [];
-        let selectedCharacter = null;
-        let characterAliases = {};
+        let allLocations = [];
+        let selectedItem = null;
 
-        // Hardcode aliases locally for high-fidelity text highlighting in UI
+        // Casing and alias mapping rules for text highlighting in UI
         const characterRules = {
             "Alice": ["Alice"],
             "White Rabbit": ["White Rabbit", "Rabbit"],
@@ -384,113 +533,230 @@
             "Alice's Sister": ["sister", "Sister"]
         };
 
-        // Fetch characters on load
-        async function fetchCharacters() {
-            try {
-                const res = await fetch('/api/characters');
-                allCharacters = await res.json();
-                renderCharacters(allCharacters);
-            } catch (err) {
-                console.error("Failed to fetch characters:", err);
+        const locationRules = {
+            "The Riverbank": ["riverbank", "river-bank", "lying on the bank", "sitting on the bank", "sitting by her sister on the bank"],
+            "The Rabbit Hole": ["rabbit-hole", "rabbit hole"],
+            "The Hall of Doors": ["hall of doors", "locked doors", "long hall", "low hall", "the hall"],
+            "The Pool of Tears": ["pool of tears", "the pool"],
+            "The White Rabbit's House": ["Rabbit's house", "Rabbit's cottage", "house of the Rabbit"],
+            "The Mushroom Path": ["mushroom"],
+            "The Duchess's House": ["Duchess's house", "Duchess's kitchen", "kitchen"],
+            "The March Hare's House": ["March Hare's house", "tea-party", "tea party"],
+            "The Queen's Croquet Ground": ["croquet-ground", "croquet ground", "croquet"],
+            "The Seaside Shore": ["seaside", "shore", "beach"],
+            "The Courtroom": ["court", "courtroom", "trial"]
+        };
+
+        // Tab Switching Actions
+        const tabCharsBtn = document.getElementById('tab-chars-btn');
+        const tabLocsBtn = document.getElementById('tab-locs-btn');
+        const appContainer = document.getElementById('app-container');
+        const searchInput = document.getElementById('search');
+
+        tabCharsBtn.addEventListener('click', () => switchTab('characters'));
+        tabLocsBtn.addEventListener('click', () => switchTab('locations'));
+
+        function switchTab(tab) {
+            currentTab = tab;
+            searchInput.value = '';
+            if (tab === 'characters') {
+                tabCharsBtn.classList.add('active');
+                tabLocsBtn.classList.remove('active');
+                appContainer.classList.remove('tab-locations-active');
+                searchInput.placeholder = 'Search characters...';
+                renderList(allCharacters);
+            } else {
+                tabCharsBtn.classList.remove('active');
+                tabLocsBtn.classList.add('active');
+                appContainer.classList.add('tab-locations-active');
+                searchInput.placeholder = 'Search settings...';
+                renderList(allLocations);
             }
         }
 
-        // Render character list in sidebar
-        function renderCharacters(list) {
-            const container = document.getElementById('char-list');
+        // Fetch Initial Data
+        async function loadData() {
+            try {
+                const charRes = await fetch('/api/characters');
+                allCharacters = await charRes.json();
+                
+                const locRes = await fetch('/api/locations');
+                allLocations = await locRes.json();
+                
+                renderList(allCharacters);
+            } catch (err) {
+                console.error("Failed to load initial data:", err);
+            }
+        }
+
+        // Render List in Sidebar
+        function renderList(list) {
+            const container = document.getElementById('list-container');
             container.innerHTML = '';
             
-            list.forEach(char => {
-                const item = document.createElement('div');
-                item.className = 'character-item';
-                if (selectedCharacter && selectedCharacter.name === char.name) {
-                    item.className += ' active';
+            list.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'list-item';
+                if (selectedItem && selectedItem.name === item.name) {
+                    el.className += ' active';
                 }
                 
-                item.innerHTML = `
-                    <span class="char-name">${char.name}</span>
-                    <span class="appearance-badge">${char.appearances}</span>
+                el.innerHTML = `
+                    <span class="item-name">${item.name}</span>
+                    <span class="badge">${item.appearances}</span>
                 `;
                 
-                item.addEventListener('click', () => selectCharacter(char));
-                container.appendChild(item);
+                el.addEventListener('click', () => selectItem(item, currentTab));
+                container.appendChild(el);
             });
         }
 
-        // Handle search filtering
-        document.getElementById('search').addEventListener('input', (e) => {
+        // Handle Search Filtering
+        searchInput.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase();
-            const filtered = allCharacters.filter(char => 
-                char.name.toLowerCase().includes(query)
+            const list = currentTab === 'characters' ? allCharacters : allLocations;
+            const filtered = list.filter(item => 
+                item.name.toLowerCase().includes(query)
             );
-            renderCharacters(filtered);
+            renderList(filtered);
         });
 
-        // Select character and fetch appearances
-        async function selectCharacter(char) {
-            selectedCharacter = char;
+        // Select Character or Location
+        async function selectItem(item, type) {
+            selectedItem = item;
             
             // Highlight active sidebar item
-            const items = document.querySelectorAll('.character-item');
-            items.forEach(item => {
-                const name = item.querySelector('.char-name').innerText;
-                if (name === char.name) {
-                    item.classList.add('active');
+            const elements = document.querySelectorAll('.list-item');
+            elements.forEach(el => {
+                const name = el.querySelector('.item-name').innerText;
+                if (name === item.name) {
+                    el.classList.add('active');
                 } else {
-                    item.classList.remove('active');
+                    el.classList.remove('remove'); // remove all active states
+                    el.classList.remove('active');
                 }
             });
 
-            // Switch views
+            // Adjust main container header theme class
+            const headerPanel = document.getElementById('header-panel');
+            if (type === 'locations') {
+                headerPanel.classList.add('header-location-active');
+            } else {
+                headerPanel.classList.remove('header-location-active');
+            }
+
+            // Switch view
             document.getElementById('no-sel-view').style.display = 'none';
             document.getElementById('active-view').style.display = 'flex';
             
-            document.getElementById('selected-char-name').innerText = char.name;
-            document.getElementById('selected-char-count').innerText = char.appearances;
+            document.getElementById('selected-title').innerText = item.name;
+            document.getElementById('selected-count').innerText = item.appearances;
 
-            const listContainer = document.getElementById('paragraphs-list');
-            listContainer.innerHTML = '<div style="color: var(--text-secondary);">Loading...</div>';
+            // Fetch related paragraphs
+            const paragraphsList = document.getElementById('paragraphs-list');
+            paragraphsList.innerHTML = '<div style="color: var(--text-secondary);">Loading paragraphs...</div>';
 
+            const queryParam = type === 'characters' ? 'character' : 'location';
+            
             try {
-                const res = await fetch(`/api/paragraphs?character=${encodeURIComponent(char.name)}`);
-                const paragraphs = await res.json();
-                renderParagraphs(paragraphs, char.name);
+                // Parallel fetch: paragraphs + related cross-linked entities
+                const pReq = fetch(`/api/paragraphs?${queryParam}=${encodeURIComponent(item.name)}`);
+                const relQueryParam = type === 'characters' ? 'character-locations?character' : 'location-characters?location';
+                const relReq = fetch(`/api/${relQueryParam}=${encodeURIComponent(item.name)}`);
+                
+                const [pRes, relRes] = await Promise.all([pReq, relReq]);
+                const paragraphs = await pRes.json();
+                const relatedEntities = await relRes.json();
+
+                renderPills(relatedEntities, type);
+                renderParagraphs(paragraphs, item.name, type);
             } catch (err) {
-                listContainer.innerHTML = '<div style="color: #ff70a6;">Error loading paragraphs.</div>';
+                paragraphsList.innerHTML = '<div style="color: #ff70a6;">Error loading data.</div>';
                 console.error(err);
             }
         }
 
-        // Render paragraph cards with highlighted terms
-        function renderParagraphs(paragraphs, charName) {
+        // Render Cross-Link Pills
+        function renderPills(entities, type) {
+            const label = document.getElementById('connections-label-text');
+            const container = document.getElementById('pills-list');
+            container.innerHTML = '';
+
+            if (type === 'characters') {
+                label.innerText = 'Locations Visited';
+                if (entities.length === 0) {
+                    container.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-secondary);">No locations mapped.</span>';
+                    return;
+                }
+                entities.forEach(locName => {
+                    const pill = document.createElement('div');
+                    pill.className = 'pill pill-location';
+                    pill.innerText = locName;
+                    pill.addEventListener('click', () => jumpTo('locations', locName));
+                    container.appendChild(pill);
+                });
+            } else {
+                label.innerText = 'Visiting Characters';
+                if (entities.length === 0) {
+                    container.innerHTML = '<span style="font-size: 0.9rem; color: var(--text-secondary);">No characters mapped.</span>';
+                    return;
+                }
+                entities.forEach(charName => {
+                    const pill = document.createElement('div');
+                    pill.className = 'pill';
+                    pill.innerText = charName;
+                    pill.addEventListener('click', () => jumpTo('characters', charName));
+                    container.appendChild(pill);
+                });
+            }
+        }
+
+        // Handle Cross-Linking Navigation jumps
+        function jumpTo(tab, itemName) {
+            switchTab(tab);
+            const list = tab === 'characters' ? allCharacters : allLocations;
+            const match = list.find(item => item.name === itemName);
+            if (match) {
+                selectItem(match, tab);
+            }
+        }
+
+        // Render Paragraphs and highlight keywords
+        function renderParagraphs(paragraphs, activeName, type) {
             const container = document.getElementById('paragraphs-list');
             container.innerHTML = '';
             
             if (paragraphs.length === 0) {
-                container.innerHTML = '<div style="color: var(--text-secondary);">No appearances found.</div>';
+                container.innerHTML = '<div style="color: var(--text-secondary);">No paragraphs found.</div>';
                 return;
             }
-
-            const aliases = characterRules[charName] || [charName];
 
             paragraphs.forEach((p, index) => {
                 const card = document.createElement('div');
                 card.className = 'paragraph-card';
                 card.style.animationDelay = `${index * 0.05}s`;
 
-                // Highlight occurrences in text
                 let highlightedText = p.text;
-                
-                // Sort aliases by length descending so longer phrases match first
-                const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
-                
-                sortedAliases.forEach(alias => {
-                    const isSister = alias.toLowerCase() === 'sister';
-                    // Create regex with word boundaries
-                    const flags = isSister ? 'gi' : 'g';
-                    const regex = new RegExp(`\\b(${escapeRegex(alias)})\\b`, flags);
-                    highlightedText = highlightedText.replace(regex, '<span class="highlight">$1</span>');
-                });
+
+                if (type === 'characters') {
+                    // Highlight the selected character's aliases
+                    const aliases = characterRules[activeName] || [activeName];
+                    const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
+                    sortedAliases.forEach(alias => {
+                        const isSister = alias.toLowerCase() === 'sister';
+                        const flags = isSister ? 'gi' : 'g';
+                        const regex = new RegExp(`\\b(${escapeRegex(alias)})\\b`, flags);
+                        highlightedText = highlightedText.replace(regex, '<span class="highlight">$1</span>');
+                    });
+                } else {
+                    // Highlight the selected location's aliases
+                    const aliases = locationRules[activeName] || [activeName];
+                    const sortedAliases = [...aliases].sort((a, b) => b.length - a.length);
+                    sortedAliases.forEach(alias => {
+                        const regex = new RegExp(`\\b(${escapeRegex(alias)})\\b`, 'gi');
+                        highlightedText = highlightedText.replace(regex, '<span class="highlight-location">$1</span>');
+                    });
+                }
 
                 card.innerHTML = `
                     <div class="paragraph-meta">Paragraph #${p.number}</div>
@@ -507,7 +773,7 @@
         }
 
         // Initialize
-        fetchCharacters();
+        loadData();
     </script>
 </body>
 </html>

@@ -17,6 +17,7 @@ type Paragraph struct {
 	Number     int
 	Text       string
 	Characters []string
+	Locations  []string
 }
 
 func parseBook(filePath string) ([]Paragraph, error) {
@@ -88,9 +89,10 @@ func parseBook(filePath string) ([]Paragraph, error) {
 		}
 	}
 
-	// For each paragraph, detect which characters appear
+	// For each paragraph, detect which characters and locations appear
 	for i := range paragraphs {
 		paragraphs[i].Characters = characters.DetectCharacters(paragraphs[i].Text)
+		paragraphs[i].Locations = characters.DetectLocations(paragraphs[i].Text)
 	}
 
 	return paragraphs, nil
@@ -98,6 +100,7 @@ func parseBook(filePath string) ([]Paragraph, error) {
 
 func main() {
 	characters.InitRules()
+	characters.InitLocationRules()
 
 	filePath := "AliceInWonderland.txt"
 	fmt.Printf("Parsing book: %s...\n", filePath)
@@ -147,6 +150,14 @@ func main() {
 		fmt.Printf("Warning constraint Paragraph creation: %v\n", err)
 	}
 
+	_, err = session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		_, err := tx.Run(ctx, "CREATE CONSTRAINT location_name_unique IF NOT EXISTS FOR (l:Location) REQUIRE l.name IS UNIQUE", nil)
+		return nil, err
+	})
+	if err != nil {
+		fmt.Printf("Warning constraint Location creation: %v\n", err)
+	}
+
 	fmt.Println("Clearing database and inserting records in a single transaction...")
 	startTime := time.Now()
 
@@ -165,8 +176,18 @@ func main() {
 			}
 		}
 
-		// 3. Create paragraph nodes and relationship links
+		// 3. Create all location nodes
+		for _, loc := range characters.Locations {
+			_, err = tx.Run(ctx, "CREATE (l:Location {name: $name})", map[string]interface{}{"name": loc.Name})
+			if err != nil {
+				return nil, fmt.Errorf("failed to create location %q: %w", loc.Name, err)
+			}
+		}
+
+		// 4. Create paragraph nodes and relationship links
 		relationshipCount := 0
+		locatedRelCount := 0
+		visitedRelCount := 0
 		for _, p := range paragraphs {
 			_, err = tx.Run(ctx, "CREATE (p:Paragraph {number: $number, text: $text})", map[string]interface{}{
 				"number": p.Number,
@@ -176,6 +197,7 @@ func main() {
 				return nil, fmt.Errorf("failed to create paragraph %d: %w", p.Number, err)
 			}
 
+			// Link characters to paragraph
 			for _, charName := range p.Characters {
 				_, err = tx.Run(ctx, `
 					MATCH (c:Individual {name: $charName}), (p:Paragraph {number: $paraNum})
@@ -189,9 +211,40 @@ func main() {
 				}
 				relationshipCount++
 			}
+
+			// Link paragraph to locations, and link characters to locations via VISITED
+			for _, locName := range p.Locations {
+				_, err = tx.Run(ctx, `
+					MATCH (l:Location {name: $locName}), (p:Paragraph {number: $paraNum})
+					CREATE (p)-[:LOCATED_IN]->(l)
+				`, map[string]interface{}{
+					"locName": locName,
+					"paraNum": p.Number,
+				})
+				if err != nil {
+					return nil, fmt.Errorf("failed to link paragraph %d to location %q: %w", p.Number, locName, err)
+				}
+				locatedRelCount++
+
+				for _, charName := range p.Characters {
+					_, err = tx.Run(ctx, `
+						MATCH (c:Individual {name: $charName}), (l:Location {name: $locName})
+						MERGE (c)-[:VISITED]->(l)
+					`, map[string]interface{}{
+						"charName": charName,
+						"locName":  locName,
+					})
+					if err != nil {
+						return nil, fmt.Errorf("failed to link character %q to location %q: %w", charName, locName, err)
+					}
+					visitedRelCount++
+				}
+			}
 		}
 
-		fmt.Printf("Transaction prepared: loaded %d individuals, %d paragraphs, and %d relationships.\n", len(characters.Characters), len(paragraphs), relationshipCount)
+		fmt.Printf("Transaction prepared: loaded %d individuals, %d locations, %d paragraphs, and:\n", len(characters.Characters), len(characters.Locations), len(paragraphs))
+		fmt.Printf("  - %d APPEARED_IN relationships\n", relationshipCount)
+		fmt.Printf("  - %d LOCATED_IN relationships\n", locatedRelCount)
 		return nil, nil
 	})
 
@@ -206,8 +259,11 @@ func main() {
 	_, err = session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
 		res, err := tx.Run(ctx, `
 			MATCH (c:Individual) WITH count(c) as charCount
-			MATCH (p:Paragraph) WITH charCount, count(p) as paraCount
-			MATCH ()-[r:APPEARED_IN]->() RETURN charCount, paraCount, count(r) as relCount
+			MATCH (l:Location) WITH charCount, count(l) as locCount
+			MATCH (p:Paragraph) WITH charCount, locCount, count(p) as paraCount
+			MATCH ()-[r1:APPEARED_IN]->() WITH charCount, locCount, paraCount, count(r1) as appCount
+			MATCH ()-[r2:LOCATED_IN]->() WITH charCount, locCount, paraCount, appCount, count(r2) as locRelCount
+			MATCH ()-[r3:VISITED]->() RETURN charCount, locCount, paraCount, appCount, locRelCount, count(r3) as visitedCount
 		`, nil)
 		if err != nil {
 			return nil, err
@@ -215,9 +271,15 @@ func main() {
 		if res.Next(ctx) {
 			record := res.Record()
 			charCount, _ := record.Get("charCount")
+			locCount, _ := record.Get("locCount")
 			paraCount, _ := record.Get("paraCount")
-			relCount, _ := record.Get("relCount")
-			fmt.Printf("Verification: found %v Individuals, %v Paragraphs, and %v APPEARED_IN relationships in database.\n", charCount, paraCount, relCount)
+			appCount, _ := record.Get("appCount")
+			locRelCount, _ := record.Get("locRelCount")
+			visitedCount, _ := record.Get("visitedCount")
+			fmt.Printf("Verification: found %v Individuals, %v Locations, %v Paragraphs, and:\n", charCount, locCount, paraCount)
+			fmt.Printf("  - %v APPEARED_IN relationships\n", appCount)
+			fmt.Printf("  - %v LOCATED_IN relationships\n", locRelCount)
+			fmt.Printf("  - %v VISITED relationships\n", visitedCount)
 		}
 		return nil, nil
 	})
