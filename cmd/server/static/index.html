@@ -731,7 +731,7 @@
         function renderLocationsPills(locations) {
             const container = document.getElementById('locations-pills-list');
             container.innerHTML = '';
-            if (locations.length === 0) {
+            if (!locations || locations.length === 0) {
                 container.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary);">No locations mapped.</span>';
                 return;
             }
@@ -748,7 +748,7 @@
         function renderCharactersPills(chars, isInteractions) {
             const container = document.getElementById('characters-pills-list');
             container.innerHTML = '';
-            if (chars.length === 0) {
+            if (!chars || chars.length === 0) {
                 container.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-secondary);">No characters mapped.</span>';
                 return;
             }
@@ -804,7 +804,7 @@
             const container = document.getElementById('paragraphs-list');
             container.innerHTML = '';
             
-            if (paragraphs.length === 0) {
+            if (!paragraphs || paragraphs.length === 0) {
                 container.innerHTML = '<div style="color: var(--text-secondary);">No paragraphs found.</div>';
                 return;
             }

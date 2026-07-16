@@ -125,7 +125,7 @@ func main() {
 				Name        string `json:"name"`
 				Appearances int64  `json:"appearances"`
 			}
-			var list []LocAppearance
+			list := []LocAppearance{}
 
 			for res.Next(ctx) {
 				rec := res.Record()
@@ -193,7 +193,7 @@ func main() {
 				Number int64  `json:"number"`
 				Text   string `json:"text"`
 			}
-			var list []ParagraphResult
+			list := []ParagraphResult{}
 
 			for res.Next(ctx) {
 				rec := res.Record()
@@ -240,7 +240,7 @@ func main() {
 				return nil, err
 			}
 
-			var list []string
+			list := []string{}
 			for res.Next(ctx) {
 				rec := res.Record()
 				nameVal, _ := rec.Get("name")
@@ -279,7 +279,7 @@ func main() {
 				return nil, err
 			}
 
-			var list []string
+			list := []string{}
 			for res.Next(ctx) {
 				rec := res.Record()
 				nameVal, _ := rec.Get("name")
@@ -318,7 +318,7 @@ func main() {
 				return nil, err
 			}
 
-			var list []string
+			list := []string{}
 			for res.Next(ctx) {
 				rec := res.Record()
 				nameVal, _ := rec.Get("name")
@@ -368,7 +368,7 @@ func main() {
 				Text     string `json:"text"`
 				Location string `json:"location"`
 			}
-			var list []ParagraphResult
+			list := []ParagraphResult{}
 
 			for res.Next(ctx) {
 				rec := res.Record()
